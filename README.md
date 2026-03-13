@@ -16,12 +16,13 @@ If anyone is in immediate danger, please contact emergency services (911 in the 
 ## 🏗️ Architecture Overview
 
 ```
-User → Chatbot (React) 
+User → Chatbot (React + Web Speech API) 
      → FastAPI Backend 
+     → Adaptive LLM Layer (Claude/Local)
      → NLP Pipeline (BERT + RoBERTa + SBERT)
      → Feature Fusion Module
      → Risk Classifier (Logistic Regression)
-     → Report Generator (BART / Template)
+     → Report Generator (BART / Claude)
      → Psychiatrist Dashboard
      → PDF Export (ReportLab)
 ```
@@ -161,12 +162,16 @@ The system includes a **rule-based fallback** that activates automatically if th
 
 ## 📊 Assessment Pipeline
 
-### 1. Input Layer (Chatbot)
-- Greeting & check-in conversation
-- Open-ended emotional exploration
-- PHQ-9 (9 questions, 0-3 each = 0-27 total)
-- GAD-7 (7 questions, 0-3 each = 0-21 total)
-- Mood self-rating (1-10)
+### 1. Input Layer (Voice-Enabled Chatbot)
+- **🎙️ Voice Interaction**: 
+    - **Speech-to-Text (STT)**: Use your voice to express feelings naturally.
+    - **Text-to-Speech (TTS)**: The AI assistant reads out messages for an immersive experience.
+- **🧠 Adaptive AI Exploration**:
+    - Unlike static bots, MindScreen uses an LLM to ask **dynamic, personalized follow-up questions** based on your initial input.
+- **Validated Questionnaires**:
+    - PHQ-9 (9 questions, 0-3 each = 0-27 total)
+    - GAD-7 (7 questions, 0-3 each = 0-21 total)
+- **Mood Rating**: Instant self-scaling (1-10)
 
 ### 2. Data Processing Layer
 ```
