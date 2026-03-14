@@ -1,0 +1,51 @@
+Traceback (most recent call last):
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\google\api_core\grpc_helpers.py", line 55, in error_remapped_callable
+    return callable_(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\grpc\_channel.py", line 1159, in __call__
+    return _end_unary_response_blocking(state, call, False, None)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\grpc\_channel.py", line 990, in _end_unary_response_blocking
+    raise _InactiveRpcError(state)  # pytype: disable=not-instantiable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+grpc._channel._InactiveRpcError: <_InactiveRpcError of RPC that terminated with:
+	status = StatusCode.NOT_FOUND
+	details = "models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+	debug_error_string = "UNKNOWN:Error received from peer ipv4:216.239.32.223:443 {grpc_message:"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.", grpc_status:5}"
+>
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\test_error.py", line 9, in main
+    q = await llm_service._get_gemini_question([{'role':'user', 'content':'tired'}])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\services\llm_service.py", line 107, in _get_gemini_question
+    response = model.generate_content(prompt)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\google\generativeai\generative_models.py", line 262, in generate_content
+    response = self._client.generate_content(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\google\ai\generativelanguage_v1beta\services\generative_service\client.py", line 812, in generate_content
+    response = rpc(
+               ^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\google\api_core\gapic_v1\method.py", line 128, in __call__
+    return wrapped_func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\google\api_core\retry\retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+           ^^^^^^^^^^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\google\api_core\retry\retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+                 ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\google\api_core\retry\retry_base.py", line 216, in _retry_error_helper
+    raise final_exc from source_exc
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\google\api_core\retry\retry_unary.py", line 147, in retry_target
+    result = target()
+             ^^^^^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\google\api_core\timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Amrita\SEM_6\Gen_AI\mindscreen_2\GENAI_MindScreen\backend\venv\Lib\site-packages\google\api_core\grpc_helpers.py", line 57, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc
+google.api_core.exceptions.NotFound: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.

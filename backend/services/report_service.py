@@ -93,7 +93,8 @@ class ReportGenerator:
             "primary_emotion": nlp_features.emotion_label,
             "sentiment": nlp_features.sentiment_label,
             "detected_keywords": nlp_features.detected_keywords,
-            "psychological_markers": nlp_features.psychological_markers
+            "psychological_markers": nlp_features.psychological_markers,
+            "conversation_summary": conversation_summary
         }
 
         return report_data
@@ -101,7 +102,7 @@ class ReportGenerator:
     async def _generate_with_gemini(self, nlp, risk, phq9, gad7, mood, conversation, patient_name) -> Dict[str, str]:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         prompt = self._build_llm_prompt(nlp, risk, phq9, gad7, mood, conversation, patient_name)
         response = model.generate_content(prompt)
@@ -123,6 +124,7 @@ class ReportGenerator:
         return f"""You are an AI clinical support system generating a personalized mental health pre-assessment report for {patient_name}.
 Write a structured clinical-style report based on the following data.
 Address {patient_name}'s specific situation based on their inputs.
+Crucially, you MUST include a summary of the conversational chat (provided below) inside the "0. CLINICAL SUMMARY" section.
 
 ASSESSMENT DATA FOR {patient_name}:
 - PHQ-9 Score: {phq9}/27 ({risk.phq9_severity} depression)
@@ -132,7 +134,7 @@ ASSESSMENT DATA FOR {patient_name}:
 - Depression probability: {risk.depression_probability:.0%}
 - Anxiety probability: {risk.anxiety_probability:.0%}
 - Risk level: {risk.risk_level.value}
-- Conversation: "{conversation[:500]}"
+- Conversation: "{conversation}"
 
 Use these exact headers:
 ## 0. CLINICAL SUMMARY
@@ -160,15 +162,22 @@ Use these exact headers:
         current_content = []
         for line in text.split('\n'):
             matched = False
+            upper_line = line.upper()
             for header, key in section_map.items():
-                if header in line:
-                    if current_section: sections[current_section] = '\n'.join(current_content).strip()
+                if header in upper_line:
+                    if current_section:
+                        sections[current_section] = '\n'.join(current_content).strip()
                     current_section = key
-                    current_content = []
+                    # Key fix: capture content on the same line after the header
+                    idx = upper_line.find(header)
+                    after_header = line[idx + len(header):].strip(': ').strip()
+                    current_content = [after_header] if after_header else []
                     matched = True
                     break
-            if not matched and current_section: current_content.append(line)
-        if current_section: sections[current_section] = '\n'.join(current_content).strip()
+            if not matched and current_section:
+                current_content.append(line)
+        if current_section:
+            sections[current_section] = '\n'.join(current_content).strip()
         for key in section_map.values():
             if key not in sections: sections[key] = "Insufficient data."
         return sections

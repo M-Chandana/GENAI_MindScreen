@@ -883,6 +883,25 @@ function ResultsView({ result, onNewAssessment, onBack }) {
 
   const downloadPdf = async () => {
     try {
+      if (result.assessment_id && result.assessment_id.startsWith('demo_')) {
+        const response = await fetch(`${API_BASE}/reports/demo/pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(result)
+        });
+        if (response.ok) {
+          const blob = await response.blob();
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `mindscreen_report_${result.assessment_id.substring(0, 8)}.pdf`;
+          link.click();
+        } else {
+          const errText = await response.text();
+          alert(`PDF generation failed: ${errText || "Backend error"}`);
+        }
+        return;
+      }
+
       const url = `http://127.0.0.1:8000/api/reports/${result.assessment_id}/pdf`;
       console.log("Downloading PDF from:", url);
       const response = await fetch(url);
@@ -1025,6 +1044,7 @@ function ResultsView({ result, onNewAssessment, onBack }) {
             </div>
 
             {[
+              ["clinical_summary", "0. Clinical Summary", "📝"],
               ["emotional_overview", "1. Emotional Overview", "💭"],
               ["behavioral_observations", "2. Behavioral Observations", "👁"],
               ["depression_risk_analysis", "3. Depression Risk Analysis", "📉"],
@@ -1321,6 +1341,10 @@ function PsychiatristDashboard({ user, onBack }) {
               </div>
 
               <button onClick={() => {
+                if (selected.assessment_id?.startsWith('demo_') || selected.assessment_id?.startsWith('a0')) {
+                  alert("PDF report is not available for mockup dashboard patients. Please complete a demo assessment first.");
+                  return;
+                }
                 const url = `${API_BASE}/reports/${selected.assessment_id}/pdf`;
                 window.open(url, '_blank');
               }} style={{ padding: "13px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #0d4f6c, #1a7a9a)", color: "white", fontWeight: 600, fontSize: 15 }}>

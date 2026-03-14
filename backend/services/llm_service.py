@@ -12,22 +12,30 @@ logger = logging.getLogger(__name__)
 
 class LLMService:
     def __init__(self):
-        self.gemini_key = os.getenv("GEMINI_API_KEY", "")
-        self.anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
+        self._load_keys()
+
+    def _load_keys(self):
+        # Reload keys dynamically to avoid initialization order problems
+        self.gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+        self.anthropic_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
         
         # Check availability
-        self.has_gemini = bool(self.gemini_key and "your_" not in self.gemini_key)
+        self.has_gemini = bool(self.gemini_key and "your_" not in self.gemini_key and "AIza" in self.gemini_key)
         self.has_anthropic = bool(self.anthropic_key and "your_" not in self.anthropic_key)
         self.is_available = self.has_gemini or self.has_anthropic
         
-    async def get_next_question(self, conversation: List[Dict[str, str]]) -> str:
+    async def get_next_question(self, conversation: List[Any]) -> str:
         """Determines next adaptive question using Gemini first, then Anthropic."""
+        self._load_keys() # Re-evaluate keys at runtime
+
         if not self.is_available:
+            logger.warning("LLM keys not available, falling back. " + f"gemini={self.has_gemini}, anthropic={self.has_anthropic}")
             return self._get_fallback_question(conversation)
             
         try:
             # 1. Try Gemini (Free Tier)
             if self.has_gemini:
+                logger.info("Using Gemini to generate the next question.")
                 return await self._get_gemini_question(conversation)
             
             # 2. Try Anthropic (Paid)
@@ -35,14 +43,17 @@ class LLMService:
                 return await self._get_anthropic_question(conversation)
                 
         except Exception as e:
-            logger.error(f"LLM Chat Error: {e}")
+            logger.error(f"LLM Chat Error: {e}", exc_info=True)
             return self._get_fallback_question(conversation)
 
-    async def summarize_conversation(self, conversation: List[Dict[str, str]]) -> str:
+    async def summarize_conversation(self, conversation: List[Any]) -> str:
         """Generates a clinical summary of the user's responses."""
+        self._load_keys()
+
         if not self.is_available:
+            logger.warning("LLM keys not available for summary, falling back.")
             # Fallback: simple join
-            user_msgs = [m['content'] for m in conversation if m['role'] == 'user']
+            user_msgs = [m.content for m in conversation if m.role == 'user']
             return " ".join(user_msgs[:5])[:600]
 
         try:
@@ -52,12 +63,13 @@ Maintain a neutral, clinical tone.
 
 CONVERSATION:
 """
-            history = "\n".join([f"{m['role']}: {m['content']}" for m in conversation])
+            # Access attributes instead of keys as these are Pydantic objects or class instances
+            history = "\n".join([f"{m.role}: {m.content}" for m in conversation])
             
             if self.has_gemini:
                 import google.generativeai as genai
                 genai.configure(api_key=self.gemini_key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 response = model.generate_content(prompt + history)
                 return response.text.strip()
             
@@ -72,16 +84,22 @@ CONVERSATION:
                 return message.content[0].text
                 
         except Exception as e:
-            logger.error(f"LLM Summary Error: {e}")
-            user_msgs = [m['content'] for m in conversation if m['role'] == 'user']
+            logger.error(f"LLM Summary Error: {e}", exc_info=True)
+            user_msgs = [m.content for m in conversation if m.role == 'user']
             return " ".join(user_msgs[:5])[:600]
 
-    async def _get_gemini_question(self, conversation: List[Dict[str, str]]) -> str:
+    async def _get_gemini_question(self, conversation: List[Any]) -> str:
         import google.generativeai as genai
         genai.configure(api_key=self.gemini_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
-        history = "\n".join([f"{m['role']}: {m['content']}" for m in conversation])
+        history_lines = []
+        for m in conversation:
+            role = m.role if hasattr(m, 'role') else m.get('role', 'unknown')
+            content = m.content if hasattr(m, 'content') else m.get('content', '')
+            history_lines.append(f"{role}: {content}")
+        
+        history = "\n".join(history_lines)
         prompt = f"""You are MindScreen, an empathetic mental health screening assistant.
 Review the conversation history below and ask ONE highly personalized, empathetic follow-up question.
 The goal is to encourage the patient to elaborate on their feelings or specific challenges they mentioned.
@@ -96,10 +114,17 @@ NEXT PERSONALIZED QUESTION:"""
         response = model.generate_content(prompt)
         return response.text.strip()
 
-    async def _get_anthropic_question(self, conversation: List[Dict[str, str]]) -> str:
+    async def _get_anthropic_question(self, conversation: List[Any]) -> str:
         import anthropic
         client = anthropic.Anthropic(api_key=self.anthropic_key)
-        history = "\n".join([f"{m['role']}: {m['content']}" for m in conversation])
+        
+        history_lines = []
+        for m in conversation:
+            role = m.role if hasattr(m, 'role') else m.get('role', 'unknown')
+            content = m.content if hasattr(m, 'content') else m.get('content', '')
+            history_lines.append(f"{role}: {content}")
+        
+        history = "\n".join(history_lines)
         prompt = f"""You are MindScreen, an empathetic mental health screening assistant.
 Review the conversation history below and ask ONE highly personalized, empathetic follow-up question.
 The goal is to encourage the patient to elaborate on their feelings or specific challenges they mentioned.
@@ -116,8 +141,14 @@ NEXT PERSONALIZED QUESTION:"""
         )
         return message.content[0].text
 
-    def _get_fallback_question(self, conversation: List[Dict[str, str]]) -> str:
-        user_msgs = [m['content'] for m in conversation if m['role'] == 'user']
+    def _get_fallback_question(self, conversation: List[Any]) -> str:
+        user_msgs = []
+        for m in conversation:
+            role = m.role if hasattr(m, 'role') else m.get('role', 'unknown')
+            content = m.content if hasattr(m, 'content') else m.get('content', '')
+            if role == 'user':
+                user_msgs.append(content)
+        
         last_msg = user_msgs[-1].lower() if user_msgs else ""
         
         # Simple rule-based personalization
